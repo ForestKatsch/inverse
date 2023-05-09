@@ -1,6 +1,6 @@
 {
   "name": "@forestkatsch/inverse",
-  "version": "0.1.1-alpha",
+  "version": "0.1.3-alpha",
   "author": "Forest Katsch <me@forestkatsch.com>",
   "license": "MIT",
   "keywords": [
@@ -22,12 +22,12 @@
     "build:cjs": "tsc --module commonjs --outDir lib/cjs"
   },
   "peerDependencies": {
-    "react": "^16.8.0"
+    "react": "^18.0.0"
   },
   "devDependencies": {
-    "@types/react": "^16.8.0",
-    "react": "^16.8.0",
-    "react-dom": "^16.8.0",
+    "@types/react": "^18.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
     "typescript": "^5.0.4"
   }
 }
