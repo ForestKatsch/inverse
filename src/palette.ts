@@ -114,8 +114,7 @@ export const getElevated = <T extends PaletteSource>(
 
 export const getColorScheme = <T extends PaletteSource>(
   container: PaletteContainer<T>,
-  palette: Palette<T>,
   colorScheme: ColorScheme
 ): Palette<T> => {
-  return getByKey(container, palette, colorScheme === "light" ? "_lightIndex" : "_darkIndex");
+  return getByKey(container, container[0], colorScheme === "light" ? "_lightIndex" : "_darkIndex");
 };
