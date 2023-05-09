@@ -16,13 +16,13 @@ export const PaletteProvider: React.FC<PropsWithChildren<PaletteProps>> = ({ chi
 };
 
 // Elevates the current palette.
-export const PaletteElevated: React.FC<PropsWithChildren<PaletteProps>> = ({ children }) => {
+export const PaletteElevated: React.FC<PropsWithChildren<{}>> = ({ children }) => {
   const palette = usePalette();
   return <PaletteProvider palette={palette.elevated}>{children}</PaletteProvider>;
 };
 
 // Inverts the current palette.
-export const PaletteInverted: React.FC<PropsWithChildren<PaletteProps>> = ({ children }) => {
+export const PaletteInverted: React.FC<PropsWithChildren<{}>> = ({ children }) => {
   const palette = usePalette();
   return <PaletteProvider palette={palette.inverse}>{children}</PaletteProvider>;
 };
