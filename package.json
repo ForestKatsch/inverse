@@ -1,9 +1,14 @@
 {
   "name": "@forestkatsch/inverse",
-  "version": "0.1.0-alpha",
+  "version": "0.1.1-alpha",
   "author": "Forest Katsch <me@forestkatsch.com>",
   "license": "MIT",
-  "private": true,
+  "keywords": [
+    "theme",
+    "react",
+    "react-context",
+    "palette"
+  ],
   "description": "A powerful theming library for React",
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",
@@ -20,9 +25,9 @@
     "react": "^16.8.0"
   },
   "devDependencies": {
-    "@types/react": "^18.2.2",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "@types/react": "^16.8.0",
+    "react": "^16.8.0",
+    "react-dom": "^16.8.0",
     "typescript": "^5.0.4"
   }
 }
