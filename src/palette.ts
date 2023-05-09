@@ -2,20 +2,25 @@
 // it's a great alias to enforce types, if only visually.
 export type Color = string;
 
+export type ColorScheme = "light" | "dark";
+
 export interface PaletteSource {
   bg: Color[];
 }
 
+export type PaletteVariants = {
+  _lightIndex: number;
+  _darkIndex: number;
+  _invertedIndex: number;
+  _elevatedIndex: number;
+};
+
 export type Palette<T extends PaletteSource> = Omit<T, "bg"> & {
   bgPrimary: Color;
   bgSecondary: Color;
+} & PaletteVariants;
 
-  light: Palette<T>;
-  dark: Palette<T>;
-  inverse: Palette<T>;
-
-  elevated: Palette<T>;
-};
+export type PaletteContainer<T extends PaletteSource> = Palette<T>[];
 
 // 1 2 3 4
 // 1 2
@@ -42,40 +47,75 @@ const createPaletteElevationsUNSAFE = <T extends PaletteSource>(source: T): Pale
     (palette, index) =>
       ({
         ...palette,
-        elevated: (palettes[index + 1] ?? palette) as Palette<T>,
+        _elevatedIndex: index === palettes.length - 1 ? index : index + 1,
       } as Palette<T>)
   );
 
   return elevations;
 };
 
-export const createThemedPalette = <T extends PaletteSource>(light: T, dark: T): Palette<T> => {
-  const lightPalette = createPaletteElevationsUNSAFE(light);
-  const darkPalette = createPaletteElevationsUNSAFE(dark);
+export const createThemedPaletteContainer = <T extends PaletteSource>(light: T, dark: T): PaletteContainer<T> => {
+  const lightPalettes = createPaletteElevationsUNSAFE(light);
+  const darkPalettes = createPaletteElevationsUNSAFE(dark);
 
-  for (const p of lightPalette) {
-    p.light = p;
-    p.dark = darkPalette[0];
-    p.inverse = darkPalette[0];
+  const palettes = [...lightPalettes, ...darkPalettes];
+
+  for (const p of lightPalettes) {
+    p._lightIndex = palettes.indexOf(p);
+    p._darkIndex = palettes.indexOf(darkPalettes[0]);
+    p._invertedIndex = palettes.indexOf(darkPalettes[0]);
   }
 
-  for (const p of darkPalette) {
-    p.light = lightPalette[0];
-    p.dark = p;
-    p.inverse = lightPalette[0];
+  for (const p of darkPalettes) {
+    p._lightIndex = palettes.indexOf(lightPalettes[0]);
+    p._darkIndex = palettes.indexOf(p);
+    p._invertedIndex = palettes.indexOf(lightPalettes[0]);
+    p._elevatedIndex += palettes.indexOf(darkPalettes[0]);
   }
 
-  return lightPalette[0];
+  return palettes;
 };
 
-export const createPalette = <T extends PaletteSource>(source: T): Palette<T> => {
-  const palette = createPaletteElevationsUNSAFE(source);
+/*
+export const createPalette = <T extends PaletteSource>(source: T): PaletteContainer<T> => {
+  const palettes = createPaletteElevationsUNSAFE(source);
 
-  for (const p of palette) {
-    p.light = p;
-    p.dark = p;
-    p.inverse = p;
+  for (const p of palettes) {
+    p._lightIndex = palettes.indexOf(p);
+    p._darkIndex = palettes.indexOf(p);
+    p._invertedIndex = palettes.indexOf(p);
   }
 
-  return palette[0];
+  return palettes;
+};
+*/
+
+export const getByKey = <T extends PaletteSource>(
+  container: PaletteContainer<T>,
+  palette: Palette<T>,
+  key: keyof PaletteVariants
+): Palette<T> => {
+  return container[palette[key]];
+};
+
+export const getInverted = <T extends PaletteSource>(
+  container: PaletteContainer<T>,
+  palette: Palette<T>
+): Palette<T> => {
+  return getByKey(container, palette, "_invertedIndex");
+};
+
+export const getElevated = <T extends PaletteSource>(
+  container: PaletteContainer<T>,
+  palette: Palette<T>
+): Palette<T> => {
+  return getByKey(container, palette, "_elevatedIndex");
+};
+
+export const getColorScheme = <T extends PaletteSource>(
+  container: PaletteContainer<T>,
+  palette: Palette<T>,
+  colorScheme: ColorScheme
+): Palette<T> => {
+  return getByKey(container, palette, colorScheme === "light" ? "_lightIndex" : "_darkIndex");
 };
