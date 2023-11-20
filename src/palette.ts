@@ -1,120 +1,84 @@
 // Ideally, this would be enforced to only contain valid CSS colors. But until then
 // it's a great alias to enforce types, if only visually.
-export type Color = string;
+export type HexColor = `#${string}`;
 
+// IMO, this is cleaner and more explicit than a [T, T, T] tuple.
+export type ProminenceLevels<T> = { primary: T; secondary: T; tertiary: T };
+
+// There are only _ever_ two color schemes: light and dark, because you can only invert between light and dark.
 export type ColorScheme = "light" | "dark";
 
-export interface PaletteSource {
-  bg: Color[];
+type ResolvedProminence<T extends Object> = { [key in keyof T]: ProminenceLevels<T[key]> };
+
+const indexToProminenceLevel = (index: number) => {
+  if (index === 0) {
+    return "primary";
+  } else if (index === 1) {
+    return "secondary";
+  } else {
+    return "tertiary";
+  }
+};
+
+interface PaletteAttributes {
+  isDark: boolean;
 }
 
-export type PaletteVariants = {
-  _lightIndex: number;
-  _darkIndex: number;
-  _invertedIndex: number;
-  _elevatedIndex: number;
-};
+export type Palette<LayerType extends Object = {}, FlatType extends Object = {}> = {
+  layers: [LayerType, LayerType, LayerType, ...LayerType[]];
+  flat: FlatType;
+} & PaletteAttributes;
 
-export type Palette<T extends PaletteSource> = Omit<T, "bg"> & {
-  bgPrimary: Color;
-  bgSecondary: Color;
-} & PaletteVariants;
+type ResolvedPaletteFromTypes<LayerType extends Object, FlatType extends Object> = ResolvedProminence<LayerType> &
+  FlatType &
+  PaletteAttributes;
 
-export type PaletteContainer<T extends PaletteSource> = Palette<T>[];
+export type ResolvedPalette<T extends Palette> = T extends Palette<infer LayerType, infer FlatType>
+  ? ResolvedPaletteFromTypes<LayerType, FlatType>
+  : never;
 
-// 1 2 3 4
-// 1 2
-//   2 3
-//     3 4
+/**
+ * Resolves the palette by extracting and computing layers based on the provided @param elevation.
+ *
+ * @template T - The type of the palette. Inferred from the @param palette if not provided.
+ * @param {T} palette - The palette to resolve.
+ * @param {number} [elevation=0] - The elevation to resolve the layers from. If `elevation` is too high, the highest possible layers will be used, so elevation will not occur.
+ * @returns {ResolvedPalette<T>} - The resolved palette.
+ */
+export const resolvePalette = <T extends Palette>(palette: T, elevation: number = 0): ResolvedPalette<T> => {
+  const flat = palette.flat;
 
-// Internal function to create all elevations for a given palette.
-const createPaletteElevationsUNSAFE = <T extends PaletteSource>(source: T): Palette<T>[] => {
-  const palettes: Omit<Palette<T>, "light" | "dark" | "inverse" | "elevated">[] = [];
+  let resolvedLayers = {} as any;
 
-  // Subtract one so every elevation is guaranteed to have bgPrimary and bgSecondary.
-  for (let i = 0; i < source.bg.length - 1; i++) {
-    const palette = {
-      ...source,
-      bg: undefined,
-      bgPrimary: source.bg[i],
-      bgSecondary: source.bg[i + 1],
-    };
+  // Ensure that `layers.length` is always 3 or more.
+  const layerStart = Math.min(palette.layers.length - 3, elevation);
 
-    palettes.push(palette);
+  if (layerStart < elevation) {
+    console.warn(
+      "Requested elevation is higher than the number of layers in the palette. Elevation will not work beyond the palette layer count minus 3. Add more layers to your palette to fix this issue and prevent this warning."
+    );
   }
 
-  const elevations = palettes.map(
-    (palette, index) =>
-      ({
-        ...palette,
-        _elevatedIndex: index === palettes.length - 1 ? index : index + 1,
-      } as Palette<T>)
-  );
+  // These are the three layers that will be used to compute the primary, secondary, and tertiary prominence levels.
+  const layers = palette.layers.slice(layerStart, layerStart + 3);
 
-  return elevations;
-};
-
-export const createThemedPaletteContainer = <T extends PaletteSource>(light: T, dark: T): PaletteContainer<T> => {
-  const lightPalettes = createPaletteElevationsUNSAFE(light);
-  const darkPalettes = createPaletteElevationsUNSAFE(dark);
-
-  const palettes = [...lightPalettes, ...darkPalettes];
-
-  for (const p of lightPalettes) {
-    p._lightIndex = palettes.indexOf(p);
-    p._darkIndex = palettes.indexOf(darkPalettes[0]);
-    p._invertedIndex = palettes.indexOf(darkPalettes[0]);
+  // Pull out the layer definitions and compute the resolved values.
+  for (const [relativeLayerIndex, layer] of layers.entries()) {
+    for (const [key, value] of Object.entries(layer)) {
+      if (!(key in resolvedLayers)) {
+        resolvedLayers[key] = {
+          primary: value,
+          secondary: value,
+          tertiary: value,
+        };
+      } else {
+        resolvedLayers[key][indexToProminenceLevel(relativeLayerIndex)] = value;
+      }
+    }
   }
 
-  for (const p of darkPalettes) {
-    p._lightIndex = palettes.indexOf(lightPalettes[0]);
-    p._darkIndex = palettes.indexOf(p);
-    p._invertedIndex = palettes.indexOf(lightPalettes[0]);
-    p._elevatedIndex += palettes.indexOf(darkPalettes[0]);
-  }
-
-  return palettes;
-};
-
-/*
-export const createPalette = <T extends PaletteSource>(source: T): PaletteContainer<T> => {
-  const palettes = createPaletteElevationsUNSAFE(source);
-
-  for (const p of palettes) {
-    p._lightIndex = palettes.indexOf(p);
-    p._darkIndex = palettes.indexOf(p);
-    p._invertedIndex = palettes.indexOf(p);
-  }
-
-  return palettes;
-};
-*/
-
-export const getByKey = <T extends PaletteSource>(
-  container: PaletteContainer<T>,
-  palette: Palette<T>,
-  key: keyof PaletteVariants
-): Palette<T> => {
-  return container[palette[key]];
-};
-
-export const getInverted = <T extends PaletteSource>(
-  container: PaletteContainer<T>,
-  palette: Palette<T>
-): Palette<T> => {
-  return getByKey(container, palette, "_invertedIndex");
-};
-
-export const getElevated = <T extends PaletteSource>(
-  container: PaletteContainer<T>,
-  palette: Palette<T>
-): Palette<T> => {
-  return getByKey(container, palette, "_elevatedIndex");
-};
-
-export const getColorScheme = <T extends PaletteSource>(
-  container: PaletteContainer<T>,
-  colorScheme: ColorScheme
-): Palette<T> => {
-  return getByKey(container, container[0], colorScheme === "light" ? "_lightIndex" : "_darkIndex");
+  return {
+    ...resolvedLayers,
+    ...flat,
+  } as ResolvedPalette<T>;
 };

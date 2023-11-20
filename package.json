@@ -1,6 +1,6 @@
 {
   "name": "@forestkatsch/inverse",
-  "version": "0.1.11-alpha",
+  "version": "0.2.0-alpha",
   "author": "Forest Katsch <me@forestkatsch.com>",
   "license": "MIT",
   "keywords": [
@@ -9,7 +9,7 @@
     "react-context",
     "palette"
   ],
-  "description": "A powerful theming library for React",
+  "description": "A reactive theming library for React",
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",
   "types": "./lib/esm/index.d.ts",

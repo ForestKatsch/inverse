@@ -1,46 +1,63 @@
 import React, { PropsWithChildren, createContext, useContext, useMemo } from "react";
-import { Palette, PaletteContainer, PaletteSource } from "./palette";
+import { ColorScheme, Palette, ResolvedPalette, resolvePalette } from "./palette";
 
 const PaletteContext = createContext<{
-  index: number;
-  container: PaletteContainer<PaletteSource>;
+  elevation: number;
+
+  light: Palette;
+  dark: Palette;
+  colorScheme: ColorScheme;
+
+  // Truthfully I don't care if this breaks.
+  resolved: any;
 }>({
-  index: 0,
-  container: [],
+  elevation: 0,
+  light: {
+    flat: {},
+    isDark: false,
+    layers: [{}, {}, {}],
+  },
+  dark: {
+    flat: {},
+    isDark: true,
+    layers: [{}, {}, {}],
+  },
+  colorScheme: "light",
+  resolved: {},
 });
 
-interface PaletteProps {
-  container: PaletteContainer<PaletteSource>;
-  _index?: number;
+export const PaletteProvider: React.FC<
+  PropsWithChildren<{
+    light: Palette;
+    dark: Palette;
 
-  // Takes precedence over index, if provided.
-  palette?: Palette<PaletteSource>;
-}
+    colorScheme?: ColorScheme;
 
-// Provides a root palette. This should exist at the root of your app, and should be passed the result
-// of either createThemedPalette or createPalette (depending on if you want to switch between light and dark themes or not.)
-export const PaletteProvider: React.FC<PropsWithChildren<PaletteProps>> = ({
-  children,
-  container,
-  _index: index = 0,
-  palette,
-}) => {
-  const memoizedPalette = useMemo(
-    () => ({
-      index: palette != null ? container.indexOf(palette) : index,
-      container,
-    }),
-    [container, index, palette]
+    elevation?: number;
+    invert?: boolean;
+  }>
+> = ({ children, light, dark, colorScheme = "light", elevation = 0, invert = false }) => {
+  const isDarkColorScheme = colorScheme === "dark";
+  const palette = (invert ? !isDarkColorScheme : isDarkColorScheme) ? dark : light;
+
+  const resolved = useMemo(() => resolvePalette(palette, elevation), [elevation, palette]);
+
+  return (
+    <PaletteContext.Provider value={{ elevation, light, dark, colorScheme, resolved }}>
+      {children}
+    </PaletteContext.Provider>
   );
-
-  return <PaletteContext.Provider value={memoizedPalette}>{children}</PaletteContext.Provider>;
 };
 
 // Elevates the current palette.
-export const PaletteElevated: React.FC<PropsWithChildren<{}>> = ({ children }) => {
-  const { index, container } = usePaletteContainer();
+export const PaletteElevated: React.FC<PropsWithChildren<{ elevationOffset?: number }>> = ({
+  children,
+  elevationOffset = 1,
+}) => {
+  const container = usePaletteContainer();
+
   return (
-    <PaletteProvider container={container} _index={container[index]._elevatedIndex}>
+    <PaletteProvider {...container} elevation={container.elevation + elevationOffset}>
       {children}
     </PaletteProvider>
   );
@@ -48,9 +65,10 @@ export const PaletteElevated: React.FC<PropsWithChildren<{}>> = ({ children }) =
 
 // Inverts the current palette.
 export const PaletteInverted: React.FC<PropsWithChildren<{}>> = ({ children }) => {
-  const { index, container } = usePaletteContainer();
+  const container = usePaletteContainer();
+
   return (
-    <PaletteProvider container={container} _index={container[index]._invertedIndex}>
+    <PaletteProvider {...container} elevation={0} invert={true}>
       {children}
     </PaletteProvider>
   );
@@ -60,10 +78,12 @@ const usePaletteContainer = () => {
   return useContext(PaletteContext);
 };
 
-// Applications should strongly type this with the PaletteSource type (or better yet, wrap this in a hook.)
-// As long as they pass a Palette derived from one of their strongly typed sources, this is guaranteed to be safe.
-export const usePalette = <T extends PaletteSource>(): Palette<T> => {
-  const { index, container: palette } = usePaletteContainer();
+export const usePaletteElevation = () => {
+  return usePaletteContainer().elevation;
+};
 
-  return palette[index] as Palette<T>;
+// Applications should strongly type this with the Palette type (or better yet, wrap this in a useAppPalette hook.)
+// As long as they pass a Palette derived from one of their strongly typed sources, this is guaranteed to be safe.
+export const usePalette = <T extends Palette>(): ResolvedPalette<T> => {
+  return usePaletteContainer().resolved;
 };
