@@ -1,6 +1,6 @@
 {
   "name": "@forestkatsch/inverse",
-  "version": "0.2.0-alpha",
+  "version": "0.2.1-alpha",
   "author": "Forest Katsch <me@forestkatsch.com>",
   "license": "MIT",
   "keywords": [
@@ -17,6 +17,7 @@
     "/lib"
   ],
   "scripts": {
+    "prepare": "yarn build",
     "build": "yarn build:esm && yarn build:cjs",
     "build:esm": "tsc",
     "build:cjs": "tsc --module commonjs --outDir lib/cjs"
