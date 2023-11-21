@@ -1,30 +1,49 @@
 import React, { PropsWithChildren, createContext, useContext, useMemo } from "react";
-import { ColorScheme, Palette, ResolvedPalette, resolvePalette } from "./palette";
+import { ColorScheme, Palette, ResolvedPalette, mergePalettes, resolvePalette } from "./palette";
 
 const PaletteContext = createContext<{
   elevation: number;
 
-  light: Palette;
-  dark: Palette;
+  regular: Palette;
+  inverse: Palette;
+
+  // What is the color scheme of `regular`?
   colorScheme: ColorScheme;
 
   // Truthfully I don't care if this breaks.
   resolved: any;
 }>({
   elevation: 0,
-  light: {
+  regular: {
     flat: {},
-    isDark: false,
     layers: [{}, {}, {}],
   },
-  dark: {
+  inverse: {
     flat: {},
-    isDark: true,
     layers: [{}, {}, {}],
   },
   colorScheme: "light",
   resolved: {},
 });
+
+const InternalPaletteProvider: React.FC<
+  PropsWithChildren<{
+    regular: Palette;
+    inverse: Palette;
+
+    colorScheme?: ColorScheme;
+
+    elevation?: number;
+  }>
+> = ({ children, regular, inverse, colorScheme = "light", elevation = 0 }) => {
+  const resolved = useMemo(() => resolvePalette(regular, elevation), [elevation, regular]);
+
+  return (
+    <PaletteContext.Provider value={{ elevation, regular, inverse, colorScheme, resolved }}>
+      {children}
+    </PaletteContext.Provider>
+  );
+};
 
 export const PaletteProvider: React.FC<
   PropsWithChildren<{
@@ -34,18 +53,15 @@ export const PaletteProvider: React.FC<
     colorScheme?: ColorScheme;
 
     elevation?: number;
-    invert?: boolean;
   }>
-> = ({ children, light, dark, colorScheme = "light", elevation = 0, invert = false }) => {
-  const isDarkColorScheme = colorScheme === "dark";
-  const palette = (invert ? !isDarkColorScheme : isDarkColorScheme) ? dark : light;
-
-  const resolved = useMemo(() => resolvePalette(palette, elevation), [elevation, palette]);
+> = ({ children, light, dark, colorScheme = "light", elevation = 0 }) => {
+  const regular = colorScheme === "dark" ? dark : light;
+  const inverse = colorScheme === "dark" ? light : dark;
 
   return (
-    <PaletteContext.Provider value={{ elevation, light, dark, colorScheme, resolved }}>
+    <InternalPaletteProvider elevation={elevation} regular={regular} inverse={inverse} colorScheme={colorScheme}>
       {children}
-    </PaletteContext.Provider>
+    </InternalPaletteProvider>
   );
 };
 
@@ -57,9 +73,9 @@ export const PaletteElevated: React.FC<PropsWithChildren<{ elevationOffset?: num
   const container = usePaletteContainer();
 
   return (
-    <PaletteProvider {...container} elevation={container.elevation + elevationOffset}>
+    <InternalPaletteProvider {...container} elevation={container.elevation + elevationOffset}>
       {children}
-    </PaletteProvider>
+    </InternalPaletteProvider>
   );
 };
 
@@ -68,18 +84,51 @@ export const PaletteInverted: React.FC<PropsWithChildren<{}>> = ({ children }) =
   const container = usePaletteContainer();
 
   return (
-    <PaletteProvider {...container} elevation={0} invert={true}>
+    <InternalPaletteProvider
+      {...container}
+      elevation={0}
+      regular={container.inverse}
+      inverse={container.regular}
+      colorScheme={container.colorScheme === "dark" ? "light" : "dark"}
+    >
       {children}
-    </PaletteProvider>
+    </InternalPaletteProvider>
   );
 };
 
-const usePaletteContainer = () => {
+// Overlays the current palette with a new one that contains a subset of `Palette`.
+export const PaletteOverlay: React.FC<PropsWithChildren<{ regular: Partial<Palette>; inverse: Partial<Palette> }>> = ({
+  children,
+  regular,
+  inverse,
+}) => {
+  const container = usePaletteContainer();
+
+  const { regularMerged, inverseMerged } = useMemo(
+    () => ({
+      regularMerged: mergePalettes(container.regular, regular),
+      inverseMerged: mergePalettes(container.regular, inverse),
+    }),
+    [container.regular, container.inverse, regular, inverse]
+  );
+
+  return (
+    <InternalPaletteProvider {...container} regular={regularMerged} inverse={inverseMerged}>
+      {children}
+    </InternalPaletteProvider>
+  );
+};
+
+export const usePaletteContainer = () => {
   return useContext(PaletteContext);
 };
 
 export const usePaletteElevation = () => {
   return usePaletteContainer().elevation;
+};
+
+export const usePaletteColorScheme = () => {
+  return usePaletteContainer().colorScheme;
 };
 
 // Applications should strongly type this with the Palette type (or better yet, wrap this in a useAppPalette hook.)

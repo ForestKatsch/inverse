@@ -1,2 +1,10 @@
-export { ProminenceLevels, HexColor, Palette, resolvePalette, ColorScheme } from "./palette";
-export { PaletteProvider, PaletteElevated, PaletteInverted, usePalette, usePaletteElevation } from "./react";
+export { ProminenceLevels, HexColor, Palette, resolvePalette, ColorScheme, OverlayMode } from "./palette";
+export {
+  PaletteProvider,
+  PaletteElevated,
+  PaletteInverted,
+  PaletteOverlay,
+  usePalette,
+  usePaletteElevation,
+  usePaletteContainer,
+} from "./react";

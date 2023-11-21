@@ -7,6 +7,7 @@ export type ProminenceLevels<T> = { primary: T; secondary: T; tertiary: T };
 
 // There are only _ever_ two color schemes: light and dark, because you can only invert between light and dark.
 export type ColorScheme = "light" | "dark";
+export type OverlayMode = "regular" | "inverse";
 
 type ResolvedProminence<T extends Object> = { [key in keyof T]: ProminenceLevels<T[key]> };
 
@@ -20,18 +21,15 @@ const indexToProminenceLevel = (index: number) => {
   }
 };
 
-interface PaletteAttributes {
-  isDark: boolean;
-}
+type LayerArray<T> = [T, T, T, ...T[]];
 
 export type Palette<LayerType extends Object = {}, FlatType extends Object = {}> = {
-  layers: [LayerType, LayerType, LayerType, ...LayerType[]];
+  layers: LayerArray<LayerType>;
   flat: FlatType;
-} & PaletteAttributes;
+};
 
 type ResolvedPaletteFromTypes<LayerType extends Object, FlatType extends Object> = ResolvedProminence<LayerType> &
-  FlatType &
-  PaletteAttributes;
+  FlatType;
 
 export type ResolvedPalette<T extends Palette> = T extends Palette<infer LayerType, infer FlatType>
   ? ResolvedPaletteFromTypes<LayerType, FlatType>
@@ -81,4 +79,24 @@ export const resolvePalette = <T extends Palette>(palette: T, elevation: number 
     ...resolvedLayers,
     ...flat,
   } as ResolvedPalette<T>;
+};
+
+export const mergePalettes = <T extends Palette>(base: T, ...list: Partial<T>[]): T => {
+  const out: T = { ...base };
+
+  for (const item of list) {
+    out.flat = { ...out.flat, ...item.flat };
+
+    const layers = item.layers;
+    if (layers != null) {
+      if (layers.length != out.layers.length) {
+        console.warn("Mismatch in layer count while merging palettes. Resulting layers will include unmerged values.");
+      }
+
+      // Should be typed as LayerArray but I'm tired of typing it out lol.
+      out.layers = out.layers.map((baseLayer, index) => ({ ...baseLayer, ...layers[index] })) as any;
+    }
+  }
+
+  return out;
 };
